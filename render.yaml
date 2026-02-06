@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: fakturex-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: DB_PATH
+        value: ./data/fakturex.db
