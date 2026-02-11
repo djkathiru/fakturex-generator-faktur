@@ -25,7 +25,7 @@ const routes = [
     path: '/settings',
     name: 'settings',
     component: () => import('@/components/Settings.vue'),
-    meta: { requiresAuth: true, roles: ['admin'], permission: 'manageSettings' }
+    meta: { requiresAuth: true, roles: ['OWNER'], permission: 'manageSettings' }
   },
   {
     path: '/invoice-list',
@@ -37,31 +37,31 @@ const routes = [
     path: '/contacts',
     name: 'contacts',
     component: () => import('@/components/Contacts.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'accountant', 'sales'], permission: 'manageContacts' }
+    meta: { requiresAuth: true, roles: ['OWNER', 'ACCOUNTANT', 'VIEWER'], permission: 'manageContacts' }
   },
   {
     path: '/warehouse',
     name: 'warehouse',
     component: () => import('@/components/Warehouse.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'warehouse'], permission: 'manageWarehouse' }
+    meta: { requiresAuth: true, roles: ['OWNER'], permission: 'manageWarehouse' }
   },
   {
     path: '/payments',
     name: 'payments',
     component: () => import('@/components/Payments.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'accountant', 'sales'], permission: 'managePayments' }
+    meta: { requiresAuth: true, roles: ['OWNER', 'ACCOUNTANT', 'VIEWER'], permission: 'managePayments' }
   },
   {
     path: '/reports',
     name: 'reports',
     component: () => import('@/components/Reports.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'accountant'], permission: 'manageReports' }
+    meta: { requiresAuth: true, roles: ['OWNER', 'ACCOUNTANT', 'VIEWER'], permission: 'manageReports' }
   },
   {
     path: '/sales-orders',
     name: 'sales-orders',
     component: () => import('@/components/SalesOrders.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'sales'], permission: 'manageSalesOrders' }
+    meta: { requiresAuth: true, roles: ['OWNER', 'ACCOUNTANT'], permission: 'manageSalesOrders' }
   },
   {
     path: '/purchase-orders',
@@ -73,19 +73,19 @@ const routes = [
     path: '/picking',
     name: 'picking',
     component: () => import('@/components/Picking.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'warehouse'], permission: 'managePicking' }
+    meta: { requiresAuth: true, roles: ['OWNER'], permission: 'managePicking' }
   },
   {
     path: '/returns',
     name: 'returns',
     component: () => import('@/components/Returns.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'sales', 'warehouse'], permission: 'manageReturns' }
+    meta: { requiresAuth: true, roles: ['OWNER', 'ACCOUNTANT'], permission: 'manageReturns' }
   },
   {
     path: '/price-lists',
     name: 'price-lists',
     component: () => import('@/components/PriceLists.vue'),
-    meta: { requiresAuth: true, roles: ['admin', 'accountant', 'sales'], permission: 'managePriceLists' }
+    meta: { requiresAuth: true, roles: ['OWNER', 'ACCOUNTANT'], permission: 'managePriceLists' }
   },
   {
     path: '/login',

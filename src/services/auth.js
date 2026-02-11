@@ -1,4 +1,5 @@
 import { getItem, setItem, removeItem } from '@/services/secureStore'
+import { apiUrl, hasApiBase } from '@/services/api'
 
 const AUTH_KEY = 'fakturex_auth'
 const USERS_KEY = 'fakturex_users'
@@ -7,30 +8,40 @@ const demoUsers = [
   {
     email: 'admin@fakturex.pl',
     password: 'admin123',
-    role: 'admin',
-    name: 'Administrator'
+    role: 'OWNER',
+    name: 'Właściciel'
   },
   {
     email: 'ksiegowy@fakturex.pl',
     password: 'demo123',
-    role: 'accountant',
+    role: 'ACCOUNTANT',
     name: 'Księgowy'
   },
   {
-    email: 'magazyn@fakturex.pl',
+    email: 'podglad@fakturex.pl',
     password: 'demo123',
-    role: 'warehouse',
-    name: 'Magazynier'
-  },
-  {
-    email: 'sprzedaz@fakturex.pl',
-    password: 'demo123',
-    role: 'sales',
-    name: 'Sprzedawca'
+    role: 'VIEWER',
+    name: 'Podgląd'
   }
 ]
 
-const readSession = () => getItem(AUTH_KEY, null)
+const legacyRoleMap = {
+  admin: 'OWNER',
+  accountant: 'ACCOUNTANT',
+  sales: 'VIEWER',
+  warehouse: 'VIEWER'
+}
+
+const normalizeRole = (role) => legacyRoleMap[role] || role
+
+const normalizeSession = (session) => {
+  if (!session?.user?.role) return session
+  const nextRole = normalizeRole(session.user.role)
+  if (nextRole === session.user.role) return session
+  return { ...session, user: { ...session.user, role: nextRole } }
+}
+
+const readSession = () => normalizeSession(getItem(AUTH_KEY, null))
 
 const writeSession = (session) => {
   setItem(AUTH_KEY, session)
@@ -41,7 +52,7 @@ export const getUsers = () => {
   if (!Array.isArray(stored) || stored.length === 0) {
     return structuredClone(demoUsers)
   }
-  return stored
+  return stored.map((user) => ({ ...user, role: normalizeRole(user.role) }))
 }
 
 export const saveUsers = async (users) => {
@@ -67,7 +78,72 @@ export const hasRole = (roles = []) => {
   return !!role && roles.includes(role)
 }
 
-export const login = (email, password) => {
+const storeBackendSession = async (token, user) => {
+  localStorage.setItem('apiToken', token)
+
+  const companiesResponse = await fetch(apiUrl('/companies'), {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+
+  if (!companiesResponse.ok) {
+    throw new Error('Nie udało się pobrać firm użytkownika.')
+  }
+
+  const companies = await companiesResponse.json()
+  let companyId = localStorage.getItem('companyId')
+  if (!companyId || !companies.some((company) => company.id === companyId)) {
+    if (companies.length > 0) {
+      companyId = companies[0].id
+    } else {
+      const createResponse = await fetch(apiUrl('/companies'), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: user.name || user.email || 'Moja firma' })
+      })
+
+      if (!createResponse.ok) {
+        throw new Error('Nie udało się utworzyć firmy.')
+      }
+
+      const created = await createResponse.json()
+      companyId = created.id
+    }
+  }
+
+  localStorage.setItem('companyId', companyId)
+}
+
+export const login = async (email, password) => {
+  if (hasApiBase()) {
+    const response = await fetch(apiUrl('/auth/login'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+
+    if (!response.ok) {
+      throw new Error('Nieprawidłowy e-mail lub hasło.')
+    }
+
+    const payload = await response.json()
+    await storeBackendSession(payload.token, payload.user)
+
+    const session = {
+      user: {
+        name: payload.user.name,
+        email: payload.user.email,
+        role: payload.user.role
+      },
+      token: payload.token
+    }
+
+    writeSession(session)
+    return session
+  }
+
   const users = getUsers()
   const matched = users.find((user) => user.email === email && user.password === password)
 
@@ -90,6 +166,8 @@ export const login = (email, password) => {
 
 export const logout = () => {
   removeItem(AUTH_KEY)
+  localStorage.removeItem('apiToken')
+  localStorage.removeItem('companyId')
 }
 
 export const getDemoUsers = () =>

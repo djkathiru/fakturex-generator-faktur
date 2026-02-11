@@ -61,6 +61,7 @@
         <h2>Dokumenty w okresie</h2>
         <div class="actions">
           <button class="ghost-btn" @click="exportDocuments">Eksport CSV</button>
+          <button v-if="canExportExcel" class="ghost-btn" @click="exportExcel">Eksport Excel</button>
           <button class="primary-btn" @click="exportVatSummary">Eksport VAT CSV</button>
         </div>
       </div>
@@ -106,6 +107,7 @@ import { useRouter } from 'vue-router'
 import { getDocuments } from '@/services/documents'
 import { getSettings } from '@/services/settings'
 import { exportCsv } from '@/services/csv'
+import { apiUrl, getAuthHeaders, hasBackendConfig } from '@/services/api'
 
 const router = useRouter()
 const settings = ref(getSettings())
@@ -178,8 +180,26 @@ const totals = computed(() => {
 })
 
 const activeCurrency = computed(() => (filterCurrency.value === 'all' ? settings.value.tax.defaultCurrency : filterCurrency.value))
+const canExportExcel = computed(() => hasBackendConfig())
 
 const exportDocuments = () => {
+  if (hasBackendConfig()) {
+    const params = new URLSearchParams({
+      from: range.value.from,
+      to: range.value.to
+    })
+    const url = apiUrl(`/reports/export/csv?${params.toString()}`)
+    fetch(url, { headers: getAuthHeaders() })
+      .then((res) => res.blob())
+      .then((blob) => {
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = 'raport-dokumenty.csv'
+        link.click()
+        URL.revokeObjectURL(link.href)
+      })
+    return
+  }
   const rows = [
     ['Numer', 'Typ', 'Kontrahent', 'Data', 'Netto', 'VAT', 'Brutto', 'Waluta']
   ]
@@ -199,6 +219,24 @@ const exportDocuments = () => {
   })
 
   exportCsv(rows, 'raport-dokumenty.csv')
+}
+
+const exportExcel = () => {
+  if (!hasBackendConfig()) return
+  const params = new URLSearchParams({
+    from: range.value.from,
+    to: range.value.to
+  })
+  const url = apiUrl(`/reports/export/xlsx?${params.toString()}`)
+  fetch(url, { headers: getAuthHeaders() })
+    .then((res) => res.blob())
+    .then((blob) => {
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = 'raport-dokumenty.xlsx'
+      link.click()
+      URL.revokeObjectURL(link.href)
+    })
 }
 
 const exportVatSummary = () => {

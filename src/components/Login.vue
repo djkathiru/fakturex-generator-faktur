@@ -77,10 +77,9 @@ const loading = ref(false)
 const demoUsers = getDemoUsers()
 
 const roleLabels = {
-  admin: 'Administrator',
-  accountant: 'Księgowość',
-  warehouse: 'Magazyn',
-  sales: 'Sprzedaż'
+  OWNER: 'Właściciel',
+  ACCOUNTANT: 'Księgowość',
+  VIEWER: 'Podgląd'
 }
 
 const onSubmit = async () => {

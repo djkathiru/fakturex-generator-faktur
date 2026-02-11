@@ -83,7 +83,7 @@ export const defaultSettings = {
     stickyActions: false
   },
   permissions: {
-    admin: {
+    OWNER: {
       manageSettings: true,
       manageUsers: true,
       manageDocuments: true,
@@ -99,39 +99,7 @@ export const defaultSettings = {
       manageReturns: true,
       managePriceLists: true
     },
-    sales: {
-      manageSettings: false,
-      manageUsers: false,
-      manageDocuments: true,
-      createDocuments: true,
-      manageInvoices: true,
-      managePayments: false,
-      manageReports: false,
-      manageContacts: true,
-      manageWarehouse: false,
-      manageSalesOrders: true,
-      managePurchaseOrders: false,
-      managePicking: false,
-      manageReturns: true,
-      managePriceLists: true
-    },
-    warehouse: {
-      manageSettings: false,
-      manageUsers: false,
-      manageDocuments: true,
-      createDocuments: false,
-      manageInvoices: false,
-      managePayments: false,
-      manageReports: false,
-      manageContacts: false,
-      manageWarehouse: true,
-      manageSalesOrders: false,
-      managePurchaseOrders: true,
-      managePicking: true,
-      manageReturns: true,
-      managePriceLists: false
-    },
-    accountant: {
+    ACCOUNTANT: {
       manageSettings: false,
       manageUsers: false,
       manageDocuments: true,
@@ -146,6 +114,22 @@ export const defaultSettings = {
       managePicking: false,
       manageReturns: false,
       managePriceLists: true
+    },
+    VIEWER: {
+      manageSettings: false,
+      manageUsers: false,
+      manageDocuments: true,
+      createDocuments: false,
+      manageInvoices: true,
+      managePayments: true,
+      manageReports: true,
+      manageContacts: true,
+      manageWarehouse: false,
+      manageSalesOrders: false,
+      managePurchaseOrders: false,
+      managePicking: false,
+      manageReturns: false,
+      managePriceLists: false
     }
   }
 }
@@ -187,11 +171,35 @@ const writeLocalSettings = (settings) => {
   }
 }
 
+const migratePermissions = (settings) => {
+  if (!settings?.permissions) return
+  if (settings.permissions.OWNER || settings.permissions.ACCOUNTANT || settings.permissions.VIEWER) return
+
+  const next = {}
+  if (settings.permissions.admin) next.OWNER = { ...settings.permissions.admin }
+  if (settings.permissions.accountant) next.ACCOUNTANT = { ...settings.permissions.accountant }
+
+  const viewerBase = {}
+  if (settings.permissions.sales) {
+    Object.assign(viewerBase, settings.permissions.sales)
+  }
+  if (settings.permissions.warehouse) {
+    Object.keys(settings.permissions.warehouse).forEach((key) => {
+      viewerBase[key] = viewerBase[key] || settings.permissions.warehouse[key]
+    })
+  }
+
+  if (Object.keys(viewerBase).length) next.VIEWER = viewerBase
+
+  settings.permissions = { ...settings.permissions, ...next }
+}
+
 export const getSettings = () => {
   const local = readLocalSettings()
   if (local) {
     const mergedLocal = structuredClone(defaultSettings)
     mergeDeep(mergedLocal, local)
+    migratePermissions(mergedLocal)
     void setItem(SETTINGS_KEY, mergedLocal)
     return mergedLocal
   }
@@ -203,6 +211,7 @@ export const getSettings = () => {
     const parsed = cached
     const merged = structuredClone(defaultSettings)
     mergeDeep(merged, parsed)
+    migratePermissions(merged)
     writeLocalSettings(merged)
     return merged
   } catch {

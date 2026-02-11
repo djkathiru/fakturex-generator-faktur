@@ -557,13 +557,12 @@ const permissionList = [
 ]
 
 const roleLabels = {
-  admin: 'Administrator',
-  sales: 'Sprzedaż',
-  warehouse: 'Magazyn',
-  accountant: 'Księgowość'
+  OWNER: 'Właściciel',
+  ACCOUNTANT: 'Księgowość',
+  VIEWER: 'Podgląd'
 }
 
-const roleOrder = ['admin', 'sales', 'warehouse', 'accountant']
+const roleOrder = ['OWNER', 'ACCOUNTANT', 'VIEWER']
 
 const roles = computed(() => {
   const existing = Object.keys(settings.permissions || {})

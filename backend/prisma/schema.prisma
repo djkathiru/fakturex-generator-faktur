@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ACCOUNTANT
+  VIEWER
+}
+
+enum InvoiceType {
+  INVOICE
+  PROFORMA
+  ADVANCE
+  FINAL
+  CORRECTION
+  RECEIPT
+  NO_VAT
+}
+
+enum ResetPeriod {
+  NONE
+  YEARLY
+  MONTHLY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum PaymentMethod {
+  TRANSFER
+  CASH
+  CARD
+  ONLINE
+}
+
+enum Currency {
+  PLN
+  EUR
+  USD
+  GBP
+  CZK
+}
+
+enum Unit {
+  PCS
+  HOUR
+  KG
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(OWNER)
+  companies CompanyUser[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  nip       String?
+  regon     String?
+  address   String?
+  city      String?
+  postal    String?
+  country   String?
+  email     String?
+  phone     String?
+  website   String?
+  logoUrl   String?
+  users     CompanyUser[]
+  clients   Client[]
+  products  Product[]
+  invoices  Invoice[]
+  payments  Payment[]
+  settings  CompanySettings?
+  numberingPatterns NumberingPattern[]
+  sequences InvoiceSequence[]
+  recurringInvoices RecurringInvoice[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CompanySettings {
+  id          String   @id @default(cuid())
+  companyId   String   @unique
+  defaultCurrency Currency @default(PLN)
+  defaultLanguage String @default("pl")
+  paymentDays Int @default(14)
+  company     Company @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NumberingPattern {
+  id        String      @id @default(cuid())
+  companyId String
+  type      InvoiceType
+  pattern   String
+  padding   Int         @default(3)
+  reset     ResetPeriod @default(YEARLY)
+  company   Company     @relation(fields: [companyId], references: [id])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([companyId, type])
+}
+
+model InvoiceSequence {
+  id        String      @id @default(cuid())
+  companyId String
+  type      InvoiceType
+  year      Int
+  month     Int
+  seq       Int
+  company   Company     @relation(fields: [companyId], references: [id])
+  updatedAt DateTime    @updatedAt
+
+  @@unique([companyId, type, year, month])
+}
+
+model CompanyUser {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  role      Role     @default(OWNER)
+  user      User     @relation(fields: [userId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  nip         String?
+  email       String?
+  phone       String?
+  address     String?
+  tags        String[]
+  company     Company  @relation(fields: [companyId], references: [id])
+  invoices    Invoice[]
+  recurringInvoices RecurringInvoice[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  sku         String?
+  unit        Unit     @default(PCS)
+  priceNet    Decimal  @db.Decimal(10, 2)
+  vatRate     Decimal  @db.Decimal(5, 2)
+  stock       Int      @default(0)
+  location    String?
+  company     Company  @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Invoice {
+  id          String      @id @default(cuid())
+  companyId   String
+  clientId    String?
+  type        InvoiceType
+  number      String
+  issueDate   DateTime
+  saleDate    DateTime
+  dueDate     DateTime?
+  currency    Currency    @default(PLN)
+  exchangeRate Decimal?   @db.Decimal(12, 6)
+  exchangeDate DateTime?
+  language    String      @default("pl")
+  notes       String?
+  issuerName  String
+  issuerNip   String?
+  issuerAddr  String?
+  totalNet    Decimal     @db.Decimal(12, 2)
+  totalVat    Decimal     @db.Decimal(12, 2)
+  totalGross  Decimal     @db.Decimal(12, 2)
+  paymentStatus PaymentStatus @default(UNPAID)
+  correctionOfId String?
+  duplicateOfId  String?
+  client      Client?     @relation(fields: [clientId], references: [id])
+  company     Company     @relation(fields: [companyId], references: [id])
+  items       InvoiceItem[]
+  payments    Payment[]
+  correctionOf Invoice?   @relation("CorrectionOf", fields: [correctionOfId], references: [id])
+  corrections  Invoice[]  @relation("CorrectionOf")
+  duplicateOf  Invoice?   @relation("DuplicateOf", fields: [duplicateOfId], references: [id])
+  duplicates   Invoice[]  @relation("DuplicateOf")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([companyId, number])
+}
+
+model RecurringInvoice {
+  id            String   @id @default(cuid())
+  companyId     String
+  clientId      String?
+  type          InvoiceType
+  currency      Currency @default(PLN)
+  language      String   @default("pl")
+  dueDays       Int      @default(14)
+  intervalMonths Int     @default(1)
+  nextRun       DateTime
+  lastRun       DateTime?
+  active        Boolean  @default(true)
+  template      Json
+  company       Company  @relation(fields: [companyId], references: [id])
+  client        Client?  @relation(fields: [clientId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model InvoiceItem {
+  id        String   @id @default(cuid())
+  invoiceId String
+  productId String?
+  name      String
+  quantity  Decimal  @db.Decimal(10, 2)
+  unit      Unit     @default(PCS)
+  priceNet  Decimal  @db.Decimal(10, 2)
+  vatRate   Decimal  @db.Decimal(5, 2)
+  discount  Decimal  @db.Decimal(5, 2) @default(0)
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  companyId   String
+  invoiceId   String?
+  amount      Decimal       @db.Decimal(12, 2)
+  currency    Currency      @default(PLN)
+  method      PaymentMethod @default(TRANSFER)
+  status      PaymentStatus @default(UNPAID)
+  receivedAt  DateTime?
+  company     Company       @relation(fields: [companyId], references: [id])
+  invoice     Invoice?      @relation(fields: [invoiceId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}

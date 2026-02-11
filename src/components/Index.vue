@@ -67,10 +67,9 @@ const user = ref(getSession()?.user ?? null)
 const permissionMatrix = ref(getPermissionsMatrix())
 
 const roleLabels = {
-  admin: 'Administrator',
-  accountant: 'Księgowość',
-  warehouse: 'Magazyn',
-  sales: 'Sprzedaż'
+  OWNER: 'Właściciel',
+  ACCOUNTANT: 'Księgowość',
+  VIEWER: 'Podgląd'
 }
 
 const refreshPermissions = () => {

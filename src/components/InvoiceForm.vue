@@ -97,6 +97,14 @@
                   </option>
                 </select>
               </label>
+              <label v-if="document.currency !== settings.tax.defaultCurrency">
+                Kurs waluty
+                <input v-model.number="document.exchangeRate" type="number" min="0" step="0.0001" class="field-secondary" />
+              </label>
+              <label v-if="document.currency !== settings.tax.defaultCurrency">
+                Data kursu
+                <input v-model="document.exchangeDate" type="date" class="field-secondary" />
+              </label>
               <label>
                 Język dokumentu
                 <select v-model="document.language" class="field-secondary">
@@ -383,6 +391,8 @@ const document = ref({
   saleDate: '',
   dueDate: '',
   currency: 'PLN',
+  exchangeRate: null,
+  exchangeDate: '',
   paymentMethod: 'Przelew',
   paymentStatus: 'unpaid',
   relatedNumber: '',
@@ -505,6 +515,10 @@ const updateAutoDates = () => {
   if (!document.value.issueDate) return
   if (!document.value.saleDate) {
     document.value.saleDate = document.value.issueDate
+  }
+
+  if (document.value.currency !== settings.value.tax.defaultCurrency && !document.value.exchangeDate) {
+    document.value.exchangeDate = document.value.issueDate
   }
 
   if (!isSalesDoc.value || document.value.type === 'receipt') return
